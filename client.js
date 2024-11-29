@@ -58,16 +58,16 @@ async function main() {
             }
 
             switch (CRUD) {
-                case 1: // Inserir
+                case 1:
                     await inserir(endpoint);
                     break;
-                case 2: // Deletar
+                case 2:
                     await deletar(endpoint);
                     break;
-                case 3: // Atualizar
+                case 3:
                     await atualizar(endpoint);
                     break;
-                case 4: // Selecionar
+                case 4:
                     await select(endpoint);
                     break;
                 default:
@@ -106,6 +106,7 @@ async function inserir(endpoint) {
 }
 
 async function deletar(endpoint) {
+    await select(endpoint);
     const id = parseInt(await prompt(`Digite o ID do ${endpoint} a ser deletado: `));
     try {
         const response = await axios.delete(`${baseURL}/${endpoint}/${id}`);
@@ -116,6 +117,7 @@ async function deletar(endpoint) {
 }
 
 async function atualizar(endpoint) {
+    await select(endpoint);
     const id = parseInt(await prompt(`Digite o ID do ${endpoint} a ser atualizado: `));
     const data = {};
     switch (endpoint) {
