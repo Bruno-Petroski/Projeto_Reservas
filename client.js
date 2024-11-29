@@ -1,5 +1,7 @@
-import readline from "readline";
 import axios from "axios";
+import readline from "readline";
+
+const baseURL = "http://localhost:3030";
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -13,60 +15,140 @@ function prompt(question) {
 }
 
 async function main() {
-    console.log("Bem-vindo ao cliente de inserção!");
+
     let continuar = true;
 
     while (continuar) {
         try {
-            const tabela = (await prompt("Escolha uma tabela para inserir (LOCAL, EVENTOS, PARTICIPANTE, ORGANIZADOR, ORGANIZADOR_EVENTO, PARTICIPANTE_EVENTO): ")).toUpperCase();
+            const CRUD = parseInt(
+                await prompt("\nEscolha a operação:\n" +
+                    "1 - Inserir\n" +
+                    "2 - Deletar\n" +
+                    "3 - Atualizar\n" +
+                    "4 - Selecionar\n" +
+                    "0 - Sair\n")
+            );
 
-            let payload = {};
-            switch (tabela) {
-                case "LOCAL":
-                    payload.nome = await prompt("Digite o nome do local: ");
-                    payload.capacidade = parseInt(await prompt("Digite a capacidade: "), 10);
+            if (CRUD === 0) {
+                continuar = false;
+                break;
+            }
+
+            const Tabela = await prompt(
+                "Escolha a tabela:\n" +
+                "1 - Local\n" +
+                "2 - Participante\n" +
+                "3 - Organizador\n"
+            );
+
+            let endpoint;
+            switch (parseInt(Tabela)) {
+                case 1:
+                    endpoint = "local";
                     break;
-                case "EVENTOS":
-                    payload.nome = await prompt("Digite o nome do evento: ");
-                    payload.data = await prompt("Digite a data do evento (YYYY-MM-DD): ");
-                    payload.local_id = parseInt(await prompt("Digite o ID do local: "), 10);
+                case 2:
+                    endpoint = "participante";
                     break;
-                case "PARTICIPANTE":
-                    payload.nome = await prompt("Digite o nome do participante: ");
-                    payload.email = await prompt("Digite o email do participante: ");
-                    break;
-                case "ORGANIZADOR":
-                    payload.nome = await prompt("Digite o nome do organizador: ");
-                    payload.contato = await prompt("Digite o contato do organizador: ");
-                    break;
-                case "ORGANIZADOR_EVENTO":
-                    payload.id_organizador = parseInt(await prompt("Digite o ID do organizador: "), 10);
-                    payload.id_evento = parseInt(await prompt("Digite o ID do evento: "), 10);
-                    break;
-                case "PARTICIPANTE_EVENTO":
-                    payload.id_participante = parseInt(await prompt("Digite o ID do participante: "), 10);
-                    payload.id_evento = parseInt(await prompt("Digite o ID do evento: "), 10);
-                    payload.data_inscricao = await prompt("Digite a data de inscrição (YYYY-MM-DD): ");
+                case 3:
+                    endpoint = "organizador";
                     break;
                 default:
-                    console.log("Tabela inválida! Tente novamente.");
+                    console.log("Tabela inválida!");
                     continue;
             }
 
-            const response = await axios.post(`http://localhost:3030/${tabela}`, payload);
-            console.log("Resposta do servidor:", response.data);
+            switch (CRUD) {
+                case 1: // Inserir
+                    await inserir(endpoint);
+                    break;
+                case 2: // Deletar
+                    await deletar(endpoint);
+                    break;
+                case 3: // Atualizar
+                    await atualizar(endpoint);
+                    break;
+                case 4: // Selecionar
+                    await select(endpoint);
+                    break;
+                default:
+                    console.log("Opção inválida!");
+            }
         } catch (error) {
-            console.error("Erro:", error.response ? error.response.data : error.message);
-        }
-
-        const resposta = (await prompt("Deseja continuar inserindo? (sim/não): ")).toLowerCase();
-        if (resposta !== "sim") {
-            continuar = false;
+            console.error("Erro:", error.message || error);
         }
     }
-
-    console.log("Encerrando cliente...");
     rl.close();
+}
+
+async function inserir(endpoint) {
+    const data = {};
+    switch (endpoint) {
+        case "local":
+            data.nome = await prompt("Digite o nome do Local: ");
+            data.capacidade = parseInt(await prompt("Digite a capacidade do Local: "));
+            break;
+        case "participante":
+            data.nome = await prompt("Digite o nome do Participante: ");
+            data.email = await prompt("Digite o email do Participante: ");
+            break;
+        case "organizador":
+            data.nome = await prompt("Digite o nome do Organizador: ");
+            data.contato = await prompt("Digite o contato do Organizador (opcional): ");
+            break;
+    }
+
+    try {
+        const response = await axios.post(`${baseURL}/${endpoint}`, data);
+        console.log("Criado com sucesso");
+    } catch (err) {
+        console.error("Erro ao inserir:", err.response?.data || err.message);
+    }
+}
+
+async function deletar(endpoint) {
+    const id = parseInt(await prompt(`Digite o ID do ${endpoint} a ser deletado: `));
+    try {
+        const response = await axios.delete(`${baseURL}/${endpoint}/${id}`);
+        console.log("Excluído com sucesso");
+    } catch (err) {
+        console.error("Erro ao excluir:", err.response?.data || err.message);
+    }
+}
+
+async function atualizar(endpoint) {
+    const id = parseInt(await prompt(`Digite o ID do ${endpoint} a ser atualizado: `));
+    const data = {};
+    switch (endpoint) {
+        case "local":
+            data.nome = await prompt("Digite o novo nome do Local: ");
+            data.capacidade = parseInt(await prompt("Digite a nova capacidade do Local: "));
+            break;
+        case "participante":
+            data.nome = await prompt("Digite o novo nome do Participante: ");
+            data.email = await prompt("Digite o novo email do Participante: ");
+            break;
+        case "organizador":
+            data.nome = await prompt("Digite o novo nome do Organizador: ");
+            data.contato = await prompt("Digite o novo contato do Organizador (opcional): ");
+            break;
+    }
+
+    try {
+        const response = await axios.put(`${baseURL}/${endpoint}/${id}`, data);
+        console.log("Atualizado com sucesso");
+    } catch (err) {
+        console.error("Erro ao atualizar:", err.response?.data || err.message);
+    }
+}
+
+async function select(endpoint) {
+    try {
+        const response = await axios.get(`${baseURL}/${endpoint}`);
+        console.log(`\n=== Lista de ${endpoint}s ===`);
+        console.table(response.data);
+    } catch (err) {
+        console.error("Erro ao buscar dados:", err.response?.data || err.message);
+    }
 }
 
 main();

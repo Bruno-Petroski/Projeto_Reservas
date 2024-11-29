@@ -5,121 +5,178 @@ import con from "./connecting.js";
 const app = new express();
 app.use(bodyParser.json());
 
-app.post('/LOCAL', (req, res) => {
+const executeQuery = (query, params = []) => {
+    return new Promise((resolve, reject) => {
+        con.query(query, params, (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+        });
+    });
+};
+
+//----- Local -----
+
+// Inserir Local
+app.post("/local", async (req, res) => {
     const { nome, capacidade } = req.body;
     if (!nome || !capacidade) {
         return res.status(400).send("Nome e capacidade são obrigatórios.");
     }
-    const query = 'INSERT INTO local(nome, capacidade) VALUES (?, ?)';
-    con.query(query, [nome, capacidade], (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.send(result);
-        }
-    });
-});
-
-app.post('/EVENTOS', (req, res) => {
-    const { nome, data, local_id } = req.body;
-    if (!nome || !data || !local_id) {
-        return res.status(400).send("Nome, data e ID do local são obrigatórios.");
+    try {
+        const query = "INSERT INTO Local (nome, capacidade) VALUES (?, ?)";
+        const result = await executeQuery(query, [nome, capacidade]);
+        res.status(201).send({ id: result.insertId });
+    } catch (err) {
+        res.status(500).send("Erro ao criar local.");
     }
-    const query = 'INSERT INTO eventos(nome, data, local_id) VALUES (?, ?, ?)';
-    con.query(query, [nome, data, local_id], (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.send(result);
-        }
-    });
 });
 
-app.post('/PARTICIPANTE', (req, res) => {
+// Select Local
+app.get("/local", async (req, res) => {
+    try {
+        const query = "SELECT * FROM Local";
+        const locais = await executeQuery(query);
+        res.send(locais);
+    } catch (err) {
+        res.status(500).send("Erro ao buscar locais.");
+    }
+});
+
+// Atualizar Local
+app.put("/local/:id", async (req, res) => {
+    const { id } = req.params;
+    const { nome, capacidade } = req.body;
+    try {
+        const query = "UPDATE Local SET nome = ?, capacidade = ? WHERE ID = ?";
+        const result = await executeQuery(query, [nome, capacidade, id]);
+        if (result.affectedRows === 0) return res.status(404).send("Local não encontrado.");
+        res.send("Local atualizado com sucesso.");
+    } catch (err) {
+        res.status(500).send("Erro ao atualizar local.");
+    }
+});
+
+// Excluir Local
+app.delete("/local/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        const query = "DELETE FROM Local WHERE ID = ?";
+        "ALTER TABLE eventos DROP FOREIGN KEY eventos_ibfk_1, ADD CONSTRAINT eventos_ibfk_1 FOREIGN KEY (local_id) REFERENCES local(ID) ON DELETE CASCADE;"
+        const result = await executeQuery(query, [id]);
+        if (result.affectedRows === 0) return res.status(404).send("Local não encontrado.");
+        res.send("Local excluído com sucesso.");
+    } catch (err) {
+        res.status(500).send("Erro ao excluir local." + err);
+    }
+});
+
+// ----- Participante -----
+
+// Inserir Participante
+app.post("/participante", async (req, res) => {
     const { nome, email } = req.body;
     if (!nome || !email) {
-        return res.status(400).send("Nome, email são obrigatórios.");
+        return res.status(400).send("Nome e email são obrigatórios.");
     }
-    const query = 'INSERT INTO participante(nome, email) VALUES (?, ?)';
-    con.query(query, [nome, email], (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.send(result);
-        }
-    });
+    try {
+        const query = "INSERT INTO Participante (nome, email) VALUES (?, ?)";
+        const result = await executeQuery(query, [nome, email]);
+        res.status(201).send({ id: result.insertId });
+    } catch (err) {
+        res.status(500).send("Erro ao criar participante.");
+    }
 });
 
-app.post('/ORGANIZADOR', (req, res) => {
+// Select Participantes
+app.get("/participante", async (req, res) => {
+    try {
+        const query = "SELECT * FROM Participante";
+        const participantes = await executeQuery(query);
+        res.send(participantes);
+    } catch (err) {
+        res.status(500).send("Erro ao buscar participantes.");
+    }
+});
+
+// Atualizar Participante
+app.put("/participante/:id", async (req, res) => {
+    const { id } = req.params;
+    const { nome, email } = req.body;
+    try {
+        const query = "UPDATE Participante SET nome = ?, email = ? WHERE ID = ?";
+        const result = await executeQuery(query, [nome, email, id]);
+        if (result.affectedRows === 0) return res.status(404).send("Participante não encontrado.");
+        res.send("Participante atualizado com sucesso.");
+    } catch (err) {
+        res.status(500).send("Erro ao atualizar participante.");
+    }
+});
+
+// Excluir Participante
+app.delete("/participante/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        const query = "DELETE FROM Participante WHERE ID = ?";
+        const result = await executeQuery(query, [id]);
+        if (result.affectedRows === 0) return res.status(404).send("Participante não encontrado.");
+        res.send("Participante excluído com sucesso.");
+    } catch (err) {
+        res.status(500).send("Erro ao excluir participante.");
+    }
+});
+
+// ----- Organizador -----
+
+// inseir Organizador
+app.post("/organizador", async (req, res) => {
     const { nome, contato } = req.body;
     if (!nome) {
         return res.status(400).send("Nome é obrigatório.");
     }
-    const query = 'INSERT INTO Organizador(nome, contato) VALUES (?, ?)';
-    con.query(query, [nome, contato], (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.send(result);
-        }
-    });
-});
-
-app.post('/ORGANIZADOR_EVENTO', (req, res) => {
-    const { id_organizador, id_evento } = req.body;
-    if (!id_organizador || !id_evento) {
-        return res.status(400).send("IDs do organizador e do evento são obrigatórios.");
-    }
-    const query = 'INSERT INTO Organizador_Evento(id_organizador, id_evento) VALUES (?, ?)';
-    con.query(query, [id_organizador, id_evento], (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.send(result);
-        }
-    });
-});
-
-app.post('/PARTICIPANTE_EVENTO', (req, res) => {
-    const { id_participante, id_evento, data_inscricao } = req.body;
-    if (!id_participante || !id_evento || !data_inscricao) {
-        return res.status(400).send("IDs do participante, do evento e a data de inscrição são obrigatórios.");
-    }
-    const query = 'INSERT INTO Participante_Evento(id_participante, id_evento, data_inscricao) VALUES (?, ?, ?)';
-    con.query(query, [id_participante, id_evento, data_inscricao], (err, result) => {
-        if (err) {
-            res.status(500).send(err);
-        } else {
-            res.send(result);
-        }
-    });
-});
-
-app.get('/SELECT', async (req, res) => {
     try {
-        const queries = {
-            local: 'SELECT * FROM local',
-            evento: 'SELECT * FROM eventos',
-            participante: 'SELECT * FROM participante',
-            organizador: 'SELECT * FROM organizador',
-            organizador_evento: 'SELECT * FROM organizador_evento',
-            participante_evento: 'SELECT * FROM participante_evento',
-        };
-
-        const results = {};
-        for (const [key, query] of Object.entries(queries)) {
-            results[key] = await new Promise((resolve, reject) => {
-                con.query(query, (err, result) => {
-                    if (err) reject(err);
-                    else resolve(result);
-                });
-            });
-        }
-
-        res.send(results);
+        const query = "INSERT INTO Organizador (nome, contato) VALUES (?, ?)";
+        const result = await executeQuery(query, [nome, contato]);
+        res.status(201).send({ id: result.insertId });
     } catch (err) {
-        console.error("Erro ao buscar dados:", err);
-        res.status(500).send("Erro ao buscar dados de todas as tabelas.");
+        res.status(500).send("Erro ao criar organizador.");
+    }
+});
+
+// Select Organizadores
+app.get("/organizador", async (req, res) => {
+    try {
+        const query = "SELECT * FROM Organizador";
+        const organizadores = await executeQuery(query);
+        res.send(organizadores);
+    } catch (err) {
+        res.status(500).send("Erro ao buscar organizadores.");
+    }
+});
+
+// Atualizar Organizador
+app.put("/organizador/:id", async (req, res) => {
+    const { id } = req.params;
+    const { nome, contato } = req.body;
+    try {
+        const query = "UPDATE Organizador SET nome = ?, contato = ? WHERE ID = ?";
+        const result = await executeQuery(query, [nome, contato, id]);
+        if (result.affectedRows === 0) return res.status(404).send("Organizador não encontrado.");
+        res.send("Organizador atualizado com sucesso.");
+    } catch (err) {
+        res.status(500).send("Erro ao atualizar organizador.");
+    }
+});
+
+// Excluir Organizador
+app.delete("/organizador/:id", async (req, res) => {
+    const { id } = req.params;
+    try {
+        const query = "DELETE FROM Organizador WHERE ID = ?";
+        const result = await executeQuery(query, [id]);
+        if (result.affectedRows === 0) return res.status(404).send("Organizador não encontrado.");
+        res.send("Organizador excluído com sucesso.");
+    } catch (err) {
+        res.status(500).send("Erro ao excluir organizador.");
     }
 });
 
